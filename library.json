@@ -1,0 +1,22 @@
+{
+    "name": "WifiSniffer",
+    "keywords": "pcap, sd, esp32",
+    "description": "A library for sniffing Wifi and saving packets in a PCAP file on SD",
+    "authors":
+	{
+		"name": "Andreock",
+		"maintainer": true
+	},
+	"repository":
+    {
+        "type": "git",
+        "url": "https://github.com/spacehuhn/ArduinoPcap.git"
+    },
+    "version": "1.0",
+    "frameworks": "arduino",
+    "dependencies":
+	{
+		"ArduinoPcap": "*",
+        "paulstoffregen/Time": "^1.6.1"
+	}
+}
