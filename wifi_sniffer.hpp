@@ -15,6 +15,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef WIFI_SNIFFER_H
+#define WIFI_SNIFFER_H
+
 #include "esp_event.h"
 #include "esp_wifi.h"
 #include "FS.h"
@@ -27,3 +30,4 @@ public:
     WifiSniffer(const char *filename, FS SD);
     ~WifiSniffer();
 };
+#endif
