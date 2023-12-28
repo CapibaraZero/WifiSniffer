@@ -24,7 +24,7 @@
 
 #include <TimeLib.h>
 #include "wifi_sniffer.hpp"
-#include "PCAP.hpp"
+#include "PCAP.h"
 
 static PCAP pcap = PCAP();
 static unsigned long int last_save = millis();
