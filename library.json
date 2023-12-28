@@ -12,11 +12,13 @@
         "type": "git",
         "url": "https://github.com/spacehuhn/ArduinoPcap.git"
     },
-    "version": "1.1",
+    "version": "1.11",
     "frameworks": "arduino",
     "dependencies":
 	{
 		"ArduinoPcap": "*",
-        "paulstoffregen/Time": "^1.6.1"
+        "paulstoffregen/Time": "^1.6.1",
+        "WiFi": "*",
+        "FS": "*"
 	}
 }
