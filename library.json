@@ -12,7 +12,7 @@
         "type": "git",
         "url": "https://github.com/spacehuhn/ArduinoPcap.git"
     },
-    "version": "1.11",
+    "version": "1.15",
     "frameworks": "arduino",
     "dependencies":
 	{

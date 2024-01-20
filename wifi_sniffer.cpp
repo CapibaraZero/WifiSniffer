@@ -15,22 +15,23 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "freertos/FreeRTOS.h"
-#include "lwip/err.h"
-#include "esp_system.h"
-#include "nvs_flash.h"
-#include "driver/gpio.h"
-#include "WiFi.h"
+#include "wifi_sniffer.hpp"
 
 #include <TimeLib.h>
-#include "wifi_sniffer.hpp"
-#include "PCAP.h"
 
+#include "PCAP.h"
+#include "WiFi.h"
+#include "driver/gpio.h"
+#include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "lwip/err.h"
+#include "nvs_flash.h"
+
+int sniffed_packet_count = 0;
 static PCAP pcap = PCAP();
 static unsigned long int last_save = millis();
 
-void cb(void *buf, wifi_promiscuous_pkt_type_t type)
-{
+void cb(void *buf, wifi_promiscuous_pkt_type_t type) {
   wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
   wifi_pkt_rx_ctrl_t ctrl = (wifi_pkt_rx_ctrl_t)pkt->rx_ctrl;
 
@@ -44,21 +45,55 @@ void cb(void *buf, wifi_promiscuous_pkt_type_t type)
 
   uint32_t packetLength = ctrl.sig_len;
   if (type == WIFI_PKT_MGMT)
-    packetLength -= 4; //  fix for known bug in the IDF https://github.com/espressif/esp-idf/issues/886. Thanks to spacehuhn
+    packetLength -= 4;  //  fix for known bug in the IDF https://github.com/espressif/esp-idf/issues/886. Thanks to spacehuhn
 
-  uint32_t timestamp = now();                                         // current timestamp
-  uint32_t microseconds = (unsigned int)(micros() - millis() * 1000); // micro seconds offset (0 - 999)
+  uint32_t timestamp = now();                                          // current timestamp
+  uint32_t microseconds = (unsigned int)(micros() - millis() * 1000);  // micro seconds offset (0 - 999)
 
   pcap.newPacketSD(timestamp, microseconds, packetLength, pkt->payload);
-  if (millis() - last_save >= 2000)
-  {
+  sniffed_packet_count++;
+  if (millis() - last_save >= 2000) {
     pcap.flushFile();
     last_save = millis();
   }
 }
 
-WifiSniffer::WifiSniffer(const char *filename, FS SD)
-{
+uint8_t _bssid[6];
+
+static void cb_bssid(void *buf, wifi_promiscuous_pkt_type_t type) {
+  wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
+  wifi_pkt_rx_ctrl_t ctrl = (wifi_pkt_rx_ctrl_t)pkt->rx_ctrl;
+
+  /* MISC PKT have 0 bytes payload and should be ignored */
+  if (type == WIFI_PKT_MISC)
+    return;
+
+  /* Packet too long */
+  if (ctrl.sig_len > 2500)
+    return;
+
+  /* Compare addr1/addr2/addr3 and saved BSSID */
+  if (memcmp(&pkt->payload[4], _bssid, 6) != 0 && 
+      memcmp(&pkt->payload[10], _bssid, 6) != 0 && 
+      memcmp(&pkt->payload[18], _bssid, 6) != 0)
+    return;
+
+  uint32_t packetLength = ctrl.sig_len;
+  if (type == WIFI_PKT_MGMT)
+    packetLength -= 4;  //  fix for known bug in the IDF https://github.com/espressif/esp-idf/issues/886. Thanks to spacehuhn
+
+  uint32_t timestamp = now();                                          // current timestamp
+  uint32_t microseconds = (unsigned int)(micros() - millis() * 1000);  // micro seconds offset (0 - 999)
+
+  pcap.newPacketSD(timestamp, microseconds, packetLength, pkt->payload);
+  sniffed_packet_count++;
+  if (millis() - last_save >= 2000) {
+    pcap.flushFile();
+    last_save = millis();
+  }
+}
+
+WifiSniffer::WifiSniffer(const char *filename, FS SD) {
   WiFi.mode(WIFI_AP);
   esp_wifi_set_promiscuous(true);
   esp_wifi_set_promiscuous_rx_cb(cb);
@@ -66,10 +101,28 @@ WifiSniffer::WifiSniffer(const char *filename, FS SD)
   pcap.openFile(SD);
 }
 
-WifiSniffer::~WifiSniffer()
-{
+WifiSniffer::~WifiSniffer() {
   esp_wifi_set_promiscuous(false);
   WiFi.softAPdisconnect(true);
   esp_wifi_set_promiscuous_rx_cb(NULL);
   pcap.closeFile();
+  clean_sniffed_packets();
 }
+
+WifiSniffer::WifiSniffer(const char *filename, FS SD, uint8_t *bssid, int ch) {
+  WiFi.mode(WIFI_AP);
+  memcpy(_bssid, bssid, sizeof(uint8_t) * 6);
+  esp_wifi_set_channel(ch, (wifi_second_chan_t)NULL);
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_promiscuous_rx_cb(cb_bssid);
+  pcap.filename = filename;
+  pcap.openFile(SD);
+}
+
+int WifiSniffer::get_sniffed_packets() {
+  return sniffed_packet_count;
+};
+
+void WifiSniffer::clean_sniffed_packets() {
+  sniffed_packet_count = 0;
+};

@@ -28,6 +28,9 @@ private:
     inline esp_err_t event_handler(void *ctx, system_event_t *event) { return ESP_OK; }
 public:
     WifiSniffer(const char *filename, FS SD);
+    WifiSniffer(const char *filename, FS SD, uint8_t *bssid, int ch);
     ~WifiSniffer();
+    int get_sniffed_packets();
+    void clean_sniffed_packets();
 };
 #endif
