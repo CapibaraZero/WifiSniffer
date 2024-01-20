@@ -73,8 +73,8 @@ static void cb_bssid(void *buf, wifi_promiscuous_pkt_type_t type) {
     return;
 
   /* Compare addr1/addr2/addr3 and saved BSSID */
-  if (memcmp(&pkt->payload[4], _bssid, 6) != 0 && 
-      memcmp(&pkt->payload[10], _bssid, 6) != 0 && 
+  if (memcmp(&pkt->payload[4], _bssid, 6) != 0 &&
+      memcmp(&pkt->payload[10], _bssid, 6) != 0 &&
       memcmp(&pkt->payload[18], _bssid, 6) != 0)
     return;
 
@@ -101,12 +101,13 @@ WifiSniffer::WifiSniffer(const char *filename, FS SD) {
   pcap.openFile(SD);
 }
 
-WifiSniffer::~WifiSniffer() {
-  esp_wifi_set_promiscuous(false);
-  WiFi.softAPdisconnect(true);
-  esp_wifi_set_promiscuous_rx_cb(NULL);
-  pcap.closeFile();
-  clean_sniffed_packets();
+WifiSniffer::WifiSniffer(const char *filename, FS SD, int ch) {
+  WiFi.mode(WIFI_AP);
+  esp_wifi_set_channel(ch, (wifi_second_chan_t)NULL);
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_promiscuous_rx_cb(cb_bssid);
+  pcap.filename = filename;
+  pcap.openFile(SD);
 }
 
 WifiSniffer::WifiSniffer(const char *filename, FS SD, uint8_t *bssid, int ch) {
@@ -117,6 +118,14 @@ WifiSniffer::WifiSniffer(const char *filename, FS SD, uint8_t *bssid, int ch) {
   esp_wifi_set_promiscuous_rx_cb(cb_bssid);
   pcap.filename = filename;
   pcap.openFile(SD);
+}
+
+WifiSniffer::~WifiSniffer() {
+  esp_wifi_set_promiscuous(false);
+  WiFi.softAPdisconnect(true);
+  esp_wifi_set_promiscuous_rx_cb(NULL);
+  pcap.closeFile();
+  clean_sniffed_packets();
 }
 
 int WifiSniffer::get_sniffed_packets() {
